@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-w%p$v+l$rh-u%$)m6$zi9_6uilyi%f!4fz#o1otxu9e@1cl-xt
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -38,8 +38,18 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    # DRF Auth 사용
+    'rest_framework.authtoken',
+    'rest_auth',
+    # 회원가입
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'rest_auth.registration',
     'cafe',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
