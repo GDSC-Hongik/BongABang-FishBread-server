@@ -19,7 +19,7 @@ class CafeOwner(AbstractUser, PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
     
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['owner_phone_number','owner_name']
+    REQUIRED_FIELDS = ['owner_phone_number','owner_name','cafe_name','cafe_address','cafe_phone_number']
 
     objects = CafeOwnerManager()
 

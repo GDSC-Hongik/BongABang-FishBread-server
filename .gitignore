@@ -9,6 +9,7 @@ codebook/
 *.pyc
 *.json
 __pycache__/
+cafe/__pycache__/models.cpython-39.pyc
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
