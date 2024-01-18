@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,25 +38,62 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
+    # 새로 추가한 app
+    'cafe',
     # DRF Auth 사용
+    'rest_framework',
     'rest_framework.authtoken',
-    'rest_auth',
+    'rest_framework_simplejwt',
+    'dj_rest_auth',
     # 회원가입
     'django.contrib.sites',
     'allauth',
     'allauth.account',
-    'rest_auth.registration',
-    'cafe',
 ]
 
-SITE_ID = 1
+REST_AUTH = {
+ 'USE_JWT': True,
+ 'JWT_AUTH_HTTPONLY': False,
+}
+JWT_AUTH_COOKIE = 'my-app-auth'
+JWT_AUTH_REFRESH_COOKIE = 'my-refresh-token'
 
+SITE_ID = 1
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+REST_AUTH_SERIALIZERS = {
+    'LOGIN_SERIALIZER': 'cafe.serializers.CustomLoginSerializer',
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+AUTH_USER_MODEL = 'cafe.CafeOwner'
+
+DJANGO_REST_AUTH = {
+    'USER_MODEL': 'cafe.CafeOwner',
+}
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    
+    'allauth.account.middleware.AccountMiddleware',
+    
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -91,11 +129,10 @@ DATABASES = {
         'NAME': 'django_db',
         'USER' : 'user1',
         'PASSWORD' : '1111',
-        'HOST' : '118.33.38.71',
+        'HOST' : '222.110.102.38',
         'PORT' : '3306',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -119,9 +156,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+# settings.py
 
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'ko-kr'
+TIME_ZONE = 'Asia/Seoul'
+
 
 USE_I18N = True
 

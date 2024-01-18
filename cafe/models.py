@@ -1,11 +1,11 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-class CafeOwner(User):
-    email = models.EmailField(unique=True)
-    user_name = models.CharField(max_length=30, unique=True)  # 유저 이름 필드 추가
+class CafeOwner(AbstractUser):
     phone_number = models.CharField(max_length=15, blank=True)  # 유저 전화번호 필드 추가
-
+    email = models.EmailField(unique=True)  # 중복된 이메일 주소 허용 x
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['phone_number'] # 회원가입시 적어야 하는 필드. username_field는 적지 않아야함.
     def __str__(self):
         return self.username
 

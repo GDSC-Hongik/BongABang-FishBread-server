@@ -1,9 +1,7 @@
 from django.contrib import admin
-from django.urls import path,include,re_path
-from rest_auth import rest_auth_views
+from django.urls import path,include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    re_path(r'^rest-auth/', include('rest_auth.urls')),
-    path('', include('cafe.urls')),
+    path('api/cafe/v1/', include('cafe.urls')),
 ]
