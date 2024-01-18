@@ -69,11 +69,17 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'dj_rest_auth.jwt_auth.JWTCookieAuthenticaton',
     )
 }
 
+ACCOUNT_ADAPTER = 'cafe.adapter.CustomUserAccountAdapter'
+
 REST_AUTH_SERIALIZERS = {
     'LOGIN_SERIALIZER': 'cafe.serializers.CustomLoginSerializer',
+}
+REST_AUTH_REGISTER_SERIALIZERS = {
+    'REGISTER_SERIALIZER': 'cafe.serializers.CustomRegisterSerializer',
 }
 
 SIMPLE_JWT = {
@@ -86,6 +92,7 @@ AUTH_USER_MODEL = 'cafe.CafeOwner'
 DJANGO_REST_AUTH = {
     'USER_MODEL': 'cafe.CafeOwner',
 }
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

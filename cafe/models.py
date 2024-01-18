@@ -1,19 +1,27 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from django.db import models
+from .manager import CafeOwnerManager
 
-class CafeOwner(AbstractUser):
-    phone_number = models.CharField(max_length=15, blank=True)  # 유저 전화번호 필드 추가
-    email = models.EmailField(unique=True)  # 중복된 이메일 주소 허용 x
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['phone_number'] # 회원가입시 적어야 하는 필드. username_field는 적지 않아야함.
-    def __str__(self):
-        return self.username
-
-class Cafe(models.Model):
-    owner = models.ForeignKey(CafeOwner, on_delete=models.CASCADE)
+class CafeOwner(AbstractUser, PermissionsMixin):
+    username = None
+    # 유저 정보
+    email = models.EmailField(unique=True)
+    owner_phone_number = models.CharField(max_length=15, blank=True, null=True)
+    owner_name = models.CharField(max_length=30, blank=True)
+    
+    # 카페 정보
     cafe_name = models.CharField(max_length=100)
     cafe_address = models.CharField(max_length=255)
     cafe_phone_number = models.CharField(max_length=15)
+    
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['owner_phone_number','owner_name']
+
+    objects = CafeOwnerManager()
 
     def __str__(self):
-        return self.cafe_name
+        return self.email
