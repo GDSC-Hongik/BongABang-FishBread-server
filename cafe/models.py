@@ -17,3 +17,17 @@ class Cafe(models.Model):
 
     def __str__(self):
         return self.cafe_name
+    
+class Menu(models.Model):
+    cafe = models.ForeignKey(Cafe, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100)
+    price_ice = models.IntegerField()
+    price_hot = models.IntegerField()
+    price_constant = models.IntegerField()
+    menu_type = models.CharField(max_length=100)
+    description = models.TextField()
+    image = models.ImageField(upload_to='menu_images/')
+
+    def __str__(self):
+        return self.name
