@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from django.db import models
-from .manager import CafeOwnerManager
+from .managers import CafeOwnerManager
 
 class CafeOwner(AbstractUser, PermissionsMixin):
     username = None
@@ -25,3 +25,4 @@ class CafeOwner(AbstractUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
