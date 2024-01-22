@@ -8,6 +8,7 @@ from django.contrib.auth import login as django_login, authenticate
 from rest_framework.exceptions import ValidationError
 from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
 from django.shortcuts import render,redirect
+from .models import Menu
 
 class CafeOwnerRegisterView(APIView):
     permission_classes = [AllowAny]
@@ -62,3 +63,11 @@ def login(request):
 
 def home(request):
     return render(request, 'index.html')
+
+def cafe_menu(request):
+    cafe_menu_items = Menu.objects.all()
+    return render(request, 'cafe_menu.html', {'cafe_menu': cafe_menu_items})
+
+def some_menu(request):
+    menus = Menu.objects.filter(price_ice__gte=3000)
+    return render(request, 'cafe_menu.html', {'cafe_menu': menus})
