@@ -4,6 +4,8 @@ from .managers import CafeOwnerManager
 
 class CafeOwner(AbstractUser, PermissionsMixin):
     username = None
+    first_name = None
+    last_name = None
     # 유저 정보
     email = models.EmailField(unique=True)
     owner_phone_number = models.CharField(max_length=15, blank=True, null=True)
@@ -13,6 +15,7 @@ class CafeOwner(AbstractUser, PermissionsMixin):
     cafe_name = models.CharField(max_length=100)
     cafe_address = models.CharField(max_length=255)
     cafe_phone_number = models.CharField(max_length=15)
+    cafe_image = models.ImageField(upload_to='menu_images', default='default_image.jpg')
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -26,3 +29,16 @@ class CafeOwner(AbstractUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
+class Menu(models.Model):
+    user = models.ForeignKey(CafeOwner, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100)
+    price_ice = models.IntegerField()
+    price_hot = models.IntegerField()
+    price_constant = models.IntegerField()
+    menu_type = models.CharField(max_length=100)
+    description = models.TextField()
+    image = models.ImageField(upload_to='menu_images/')
+
+    def __str__(self):
+        return self.name
