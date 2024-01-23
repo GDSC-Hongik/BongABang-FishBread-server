@@ -8,6 +8,8 @@ from django.contrib.auth import login as django_login, authenticate
 from rest_framework.exceptions import ValidationError
 from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
 from django.shortcuts import render,redirect
+import openai
+import os
 from .models import Menu
 
 class CafeOwnerRegisterView(APIView):
@@ -71,3 +73,32 @@ def cafe_menu(request):
 def some_menu(request):
     menus = Menu.objects.filter(price_ice__gte=3000)
     return render(request, 'cafe_menu.html', {'cafe_menu': menus})
+
+# chapgpt 연동
+# 앞서 자신이 부여받은 API key를 넣으면 된다. 절대 외부에 공개해서는 안된다.
+openai.api_key='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'
+
+def get_completion(prompt): 
+	print(prompt) 
+	query = openai.ChatCompletion.create( 
+		model="gpt-3.5-turbo",
+		messages=[
+        	{'role':'user','content': prompt}
+    	], 
+		max_tokens=1024, 
+		n=1, 
+		stop=None, 
+		temperature=0.5, 
+	) 
+	response = query.choices[0].message["content"]
+	print(response) 
+	return response 
+
+
+def query_view(request): 
+	if request.method == 'POST': 
+		prompt = request.POST.get('prompt') 
+		prompt=str(prompt)
+		response = get_completion(prompt)
+		return JsonResponse({'response': response}) 
+	return render(request, 'query.html') 
