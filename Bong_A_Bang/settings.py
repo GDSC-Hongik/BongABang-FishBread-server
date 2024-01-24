@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+import openai
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -137,7 +139,7 @@ DATABASES = {
         'NAME': 'django_db',
         'USER' : 'user1',
         'PASSWORD' : '1111',
-        'HOST' : '222.110.102.38',
+        'HOST' : '183.96.237.106',
         'PORT' : '3306',
     }
 }
@@ -186,3 +188,8 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# chapgpt 연동
+load_dotenv()
+
+openai.api_key=os.getenv("api_key")

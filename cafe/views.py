@@ -3,14 +3,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import ValidationError
 from django.http import JsonResponse
 from django.contrib.auth import login as django_login, authenticate
-from rest_framework.exceptions import ValidationError
-from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
 from django.shortcuts import render,redirect
 import openai
 import os
 from .models import Menu
+from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
 
 class CafeOwnerRegisterView(APIView):
     permission_classes = [AllowAny]
@@ -74,10 +74,7 @@ def some_menu(request):
     menus = Menu.objects.filter(price_ice__gte=3000)
     return render(request, 'cafe_menu.html', {'cafe_menu': menus})
 
-# chapgpt 연동
-# 앞서 자신이 부여받은 API key를 넣으면 된다. 절대 외부에 공개해서는 안된다.
-openai.api_key='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'
-
+# chatgpt 연동
 def get_completion(prompt): 
 	print(prompt) 
 	query = openai.ChatCompletion.create( 
