@@ -99,3 +99,49 @@ def query_view(request):
 		response = get_completion(prompt)
 		return JsonResponse({'response': response}) 
 	return render(request, 'query.html') 
+
+# views.py
+def get_completion2(request, user_input): 
+    # 대화 세션 시작 체크
+    
+    if True:
+        # 텍스트 파일에서 프롬프트 읽기
+        with open('/Users/jeonjisu/Desktop/대학/프로젝트/BongABang-FishBread-server/cafe/prompt.txt', 'r', encoding='utf-8') as file:
+            fixed_prompt = file.read()
+            print(fixed_prompt)
+        full_prompt = fixed_prompt + "\n\n" + user_input
+        request.session['started'] = True
+    else:
+        full_prompt = user_input
+
+    # OpenAI GPT 모델을 사용하여 대답 생성
+    query = openai.ChatCompletion.create( 
+        model="gpt-3.5-turbo",
+        messages=[
+            {'role':'user','content': full_prompt}
+        ], 
+        max_tokens=1024, 
+        n=1, 
+        stop=None, 
+        temperature=0.5, 
+    ) 
+    response = query.choices[0].message["content"]
+    
+    # 대화 내역 세션에 저장
+    if 'history' not in request.session:
+        request.session['history'] = []
+    request.session['history'].append({'user': user_input, 'bot': response})
+    
+    return response
+
+def query_view2(request): 
+    if request.method == 'POST': 
+        user_input = request.POST.get('prompt') 
+        user_input = str(user_input)
+        response = get_completion2(request, user_input)
+        return JsonResponse({'response': response, 'history': request.session['history']}) 
+    elif request.method == 'GET':
+        # GET 요청 시 대화 세션 초기화
+        request.session['started'] = False
+        request.session['history'] = []
+    return render(request, 'query.html', {'history': request.session.get('history', [])}) 

@@ -61,7 +61,12 @@
 		<br> 
 		<div class="mb-3"> 
 			<h6>Response:</h6> 
-			<div class="container border overflow-auto h-50" id="response"></div> 
+			<div class="container border overflow-auto h-50" id="response">
+				{% for entry in history %}
+            		<p><strong>User:</strong> {{ entry.user }}</p>
+            		<p><strong>Bot:</strong> {{ entry.bot }}</p>
+        		{% endfor %}
+			</div> 
 			
 		</div> 
 	</div> 
