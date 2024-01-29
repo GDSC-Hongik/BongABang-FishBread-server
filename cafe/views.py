@@ -4,10 +4,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import ValidationError
+from google.cloud import texttospeech
 from django.http import JsonResponse
 from django.contrib.auth import login as django_login, authenticate
 from django.shortcuts import render,redirect
 import openai
+from django.conf import settings
 import os
 from .models import Menu
 from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
@@ -100,19 +102,14 @@ def query_view(request):
 		return JsonResponse({'response': response}) 
 	return render(request, 'query.html') 
 
-# views.py
 def get_completion2(request, user_input): 
-    # 대화 세션 시작 체크
-    
-    if True:
-        # 텍스트 파일에서 프롬프트 읽기
-        with open('/Users/jeonjisu/Desktop/대학/프로젝트/BongABang-FishBread-server/cafe/prompt.txt', 'r', encoding='utf-8') as file:
-            fixed_prompt = file.read()
-            print(fixed_prompt)
-        full_prompt = fixed_prompt + "\n\n" + user_input
-        request.session['started'] = True
-    else:
-        full_prompt = user_input
+    # 대화 이력 확인 및 업데이트
+    if 'history' not in request.session:
+        request.session['history'] = []
+
+    # 이전 대화 내역을 포함시킴
+    previous_conversation = "\n".join([f"{exchange['user']}\\n{exchange['bot']}" for exchange in request.session['history']])
+    full_prompt = previous_conversation + "\n\n" + user_input
 
     # OpenAI GPT 모델을 사용하여 대답 생성
     query = openai.ChatCompletion.create( 
@@ -126,22 +123,56 @@ def get_completion2(request, user_input):
         temperature=0.5, 
     ) 
     response = query.choices[0].message["content"]
-    
-    # 대화 내역 세션에 저장
-    if 'history' not in request.session:
-        request.session['history'] = []
+
+    # 새 대화 내역 추가
     request.session['history'].append({'user': user_input, 'bot': response})
     
     return response
 
+def run_text_to_speech(text, post_count):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/jeonjisu/Desktop/university/project/BongABang-FishBread-server/codebook/bong-a-bang-412508-9e4d0ff505ce.json"
+    client = texttospeech.TextToSpeechClient()
+    synthesis_input = texttospeech.SynthesisInput(text=text)
+    voice = texttospeech.VoiceSelectionParams(
+        language_code="ko-KR", ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+    )
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3
+    )
+    
+    # 새로운 파일 이름 생성
+    output_file_name = f"newoutput_v{post_count}.mp3"
+    output_file_path = os.path.join(settings.MEDIA_ROOT, output_file_name)
+    print("output_file_path",output_file_path)
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
+
+    # 새로운 파일로 오디오 저장
+    with open(output_file_path, "wb") as out:
+        out.write(response.audio_content)
+        print(f'Audio file Created !  "{output_file_path}"')
+
+    # 새로운 파일 이름과 경로를 반환
+    return output_file_name, output_file_path
 def query_view2(request): 
     if request.method == 'POST': 
         user_input = request.POST.get('prompt') 
         user_input = str(user_input)
         response = get_completion2(request, user_input)
-        return JsonResponse({'response': response, 'history': request.session['history']}) 
+        
+        # 새로운 파일 이름을 얻어옴
+        post_count = request.session.get('post_count', 0)
+        post_count += 1
+        request.session['post_count'] = post_count
+        new_audio_file_name, new_audio_file_path = run_text_to_speech(response, post_count)
+        print("settings.MEDIA_URL",settings.MEDIA_URL)
+        audio_url = request.build_absolute_uri(settings.MEDIA_URL + new_audio_file_name)
+
+        return JsonResponse({'response': response, 'audio_url': audio_url, 'history': request.session['history']})
     elif request.method == 'GET':
         # GET 요청 시 대화 세션 초기화
         request.session['started'] = False
         request.session['history'] = []
-    return render(request, 'query.html', {'history': request.session.get('history', [])}) 
+        request.session['post_count'] = 0
+    return render(request, 'query.html', {'history': request.session.get('history', [])})
