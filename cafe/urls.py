@@ -1,14 +1,8 @@
 from django.urls import path, include
 from .views import CafeOwnerRegisterView,CustomLoginView,register,login,\
     home,cafe_menu,some_menu,query_view, RealTimeSTT, transcribe_audio
-from cafe.consumers import SpeechToTextConsumer
-
-websocket_urlpatterns = [
-    path('ws/stt/', SpeechToTextConsumer.as_asgi()),
-]
 
 urlpatterns = [
-    *websocket_urlpatterns,
     # path('login/', CustomLoginView.as_view(), name='register'),
     # path('register/', CafeOwnerRegisterView.as_view(), name='register'),
     path('register/', register, name='register'),
