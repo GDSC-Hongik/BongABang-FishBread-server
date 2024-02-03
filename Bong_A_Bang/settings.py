@@ -54,6 +54,8 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'allauth',
     'allauth.account',
+    # 실시간 stt 지원
+    'channels',
 ]
 
 REST_AUTH = {
@@ -186,6 +188,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/uploads/"
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
@@ -193,3 +197,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # chatgpt 연동
 openai.api_key=os.getenv("api_key")
+
+# google stt api 연동
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+ASGI_APPLICATION = 'Bong_A_Bang.routing.application'

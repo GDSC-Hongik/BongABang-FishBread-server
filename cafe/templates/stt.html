@@ -1,0 +1,62 @@
+<!-- templates/record_audio.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Audio</title>
+</head>
+<body>
+    <h1>Record Audio</h1>
+    <button id="startRecord">Start Recording</button>
+    <button id="stopRecord">Stop Recording</button>
+    <audio id="audioPlayer" controls></audio>
+    
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById('startRecord').addEventListener('click', () => {
+            audioChunks = [];
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        try {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            document.getElementById('audioPlayer').src = audioUrl;
+                    
+                            const formData = new FormData();
+                            formData.append('audio', audioBlob);
+                            const response = await fetch('{% url "transcribe_audio" %}', {
+                                method: 'POST',
+                                body: formData,
+                            });
+                    
+                            const data = await response.json();
+                            console.log('Transcripts:', data.transcripts);
+
+                        } catch (error) {
+                            console.error('Error in mediaRecorder.onstop:', error);
+                        }
+                    };
+
+                    mediaRecorder.start();
+                })
+                .catch(error => console.error('Error accessing microphone:', error));
+        });
+
+        document.getElementById('stopRecord').addEventListener('click', () => {
+            mediaRecorder.stop();
+        });
+    </script>
+</body>
+</html>
