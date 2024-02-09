@@ -108,14 +108,16 @@ def RealTimeSTT(request):
 from google.protobuf.json_format import MessageToDict
 from google.cloud import speech
 from datetime import datetime
+import base64
 
 def transcribe_audio(request):
     if request.method == 'POST':
         # Audio recording parameters
-        RATE = 16000
+        RATE = 48000
         CHUNK = int(RATE / 10)  # 100ms
 
         if 'audio' in request.FILES:
+            # 음성 데이터 가져오기
             audio_file = request.FILES['audio']
 
             # 로컬 디렉터리에 저장 (media/audio/ 하위에 저장됨)
@@ -123,14 +125,16 @@ def transcribe_audio(request):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             file_name = f"audio_{timestamp}.wav"
             file_path = os.path.join(settings.MEDIA_ROOT, 'audio', file_name)
+            # 음성 데이터 저장하기
             with open(file_path, 'wb') as destination:
                 for chunk in audio_file.chunks():
                     destination.write(chunk)
 
             client = speech.SpeechClient()
-
+            
+            # 읽은 데이터 api에 보내는 파일 base64 encoding.
             with open(file_path, "rb") as audio_file_2:
-                content = audio_file_2.read()
+                content = base64.b64encode(audio_file_2.read())
 
             audio = speech.RecognitionAudio(content=content)
             config = speech.RecognitionConfig(
@@ -140,7 +144,6 @@ def transcribe_audio(request):
             )
 
             response = client.recognize(config=config, audio=audio)
-            print(response)
             # Each result is for a consecutive portion of the audio. Iterate through
             # them to get the transcripts for the entire audio file.
             transcripts = [result.alternatives[0].transcript for result in response.results]
