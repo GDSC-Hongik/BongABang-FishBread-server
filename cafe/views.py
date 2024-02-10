@@ -108,12 +108,19 @@ def RealTimeSTT(request):
 from google.protobuf.json_format import MessageToDict
 from google.cloud import speech
 from datetime import datetime
+from pydub import AudioSegment
 import base64
+
+def convert_sample_rate(input_file, target_sample_rate):
+    sound = AudioSegment.from_file(input_file)
+    sound = sound.set_frame_rate(target_sample_rate)
+    sound = sound.set_sample_width(2)  # 2바이트(16비트) 샘플로 설정
+    sound.export(input_file, format="wav")
 
 def transcribe_audio(request):
     if request.method == 'POST':
         # Audio recording parameters
-        RATE = 48000
+        RATE = 16000
         CHUNK = int(RATE / 10)  # 100ms
 
         if 'audio' in request.FILES:
@@ -130,16 +137,18 @@ def transcribe_audio(request):
                 for chunk in audio_file.chunks():
                     destination.write(chunk)
 
+            # Convert the sample rate of the audio file to 16kHz
+            convert_sample_rate(file_path, RATE)
+            
             client = speech.SpeechClient()
             
-            # 읽은 데이터 api에 보내는 파일 base64 encoding.
             with open(file_path, "rb") as audio_file_2:
-                content = base64.b64encode(audio_file_2.read())
+                content = audio_file_2.read()
 
             audio = speech.RecognitionAudio(content=content)
             config = speech.RecognitionConfig(
                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=48000,
+                sample_rate_hertz=16000,
                 language_code="ko-KR",
             )
 
