@@ -113,7 +113,7 @@ import base64
 
 def convert_sample_rate(input_file, target_sample_rate):
     sound = AudioSegment.from_file(input_file)
-    sound = sound.set_frame_rate(target_sample_rate)
+    sound = sound.set_frame_rate(target_sample_rate) # 샘플레이트 변경하기
     sound = sound.set_sample_width(2)  # 2바이트(16비트) 샘플로 설정
     sound.export(input_file, format="wav")
 
