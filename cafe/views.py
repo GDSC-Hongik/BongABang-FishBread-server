@@ -150,6 +150,7 @@ def transcribe_audio(request):
                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
                 sample_rate_hertz=16000,
                 language_code="ko-KR",
+                enable_automatic_punctuation=True,
             )
 
             response = client.recognize(config=config, audio=audio)
