@@ -9,23 +9,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='cafeowner',
-            name='first_name',
-        ),
-        migrations.RemoveField(
-            model_name='cafeowner',
-            name='last_name',
-        ),
-        migrations.RemoveField(
-            model_name='cafeowner',
-            name='username',
-        ),
-        migrations.AddField(
-            model_name='cafeowner',
-            name='cafe_image',
-            field=models.ImageField(default='default_image.jpg', upload_to='menu_images'),
-        ),
         migrations.CreateModel(
             name='Menu',
             fields=[
