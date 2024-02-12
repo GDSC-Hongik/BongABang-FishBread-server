@@ -1,6 +1,11 @@
 import openai
 import json
 import io
+from sentence_transformers import SentenceTransformer
+import numpy as np
+from numpy import dot
+from numpy.linalg import norm
+import time
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -165,6 +170,18 @@ def transcribe_audio(request):
             return JsonResponse({'status': 'error', 'message': 'No audio file provided'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+def calculate_similarity_with_fixed_sentence_order_done(input_sentence):
+    sentences = ["주문을 완료하고싶어."]
+    sentences.append(input_sentence)
+    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    embeddings = model.encode(sentences)
+    return dot(embeddings[0], embeddings[1]) / (norm(embeddings[0]) * norm(embeddings[1]))
+def calculate_similarity_with_fixed_sentence_get_shop(input_sentence):
+    sentences = ["장바구니에 담고싶어."]
+    sentences.append(input_sentence)
+    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    embeddings = model.encode(sentences)
+    return dot(embeddings[0], embeddings[1]) / (norm(embeddings[0]) * norm(embeddings[1]))
 def get_completion(request, user_input): 
     # 대화 이력 확인 및 업데이트
     if 'history' not in request.session:
@@ -213,6 +230,13 @@ def get_completion(request, user_input):
     # 새 대화 내역 추가
     request.session['history'].append({'user': user_input, 'bot': response})
     print(response)
+    similarity_score_user = calculate_similarity_with_fixed_sentence_order_done(user_input)
+    similarity_score_bot = calculate_similarity_with_fixed_sentence_order_done(response)
+
+    # 유사도 임계값 설정 (예: 0.7)
+    threshold = 0.7
+    if similarity_score_user > threshold or similarity_score_bot > threshold:
+        print("주문완료")
     return response
 
 def run_text_to_speech(text, post_count,now):
