@@ -154,21 +154,17 @@ def transcribe_audio(request):
                 enable_automatic_punctuation=True,
             )
 
-            response = client.recognize(config=config, audio=audio)
-            # Each result is for a consecutive portion of the audio. Iterate through
-            # them to get the transcripts for the entire audio file.
-            for idx,i in enumerate(response.results):
-                print("idx:",idx, "i:",i)
-            transcripts = [result.alternatives[0].transcript for result in response.results]
-            print("transcripts[0]",transcripts[0])
-            print("transcripts[-1]",transcripts[-1])
+            try:
+                response = client.recognize(config=config, audio=audio)
+                transcripts = [result.alternatives[0].transcript for result in response.results]
+                return JsonResponse({'status': 'success', 'transcripts': transcripts})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)})
 
-            return JsonResponse({'status': 'success', 'transcripts': transcripts})
         else:
             return JsonResponse({'status': 'error', 'message': 'No audio file provided'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
 def get_completion(request, user_input): 
     # 대화 이력 확인 및 업데이트
     if 'history' not in request.session:
@@ -220,7 +216,7 @@ def get_completion(request, user_input):
     return response
 
 def run_text_to_speech(text, post_count,now):
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/jeonjisu/Desktop/university/project/BongABang-FishBread-server/codebook/bong-a-bang-412508-9e4d0ff505ce.json"
+    # os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/jeonjisu/Desktop/university/project/BongABang-FishBread-server/codebook/bong-a-bang-412508-9e4d0ff505ce.json"
     client = texttospeech.TextToSpeechClient()
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(

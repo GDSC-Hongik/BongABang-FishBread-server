@@ -1,78 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Record Audio</title>
+  <title>음성 녹음</title>
 </head>
 <body>
-    <h1>Record Audio</h1>
-    <p>Press and hold the spacebar to record audio. Release the spacebar to stop recording.</p>
-    <audio id="audioPlayer" controls></audio>
+  <div id="statusMessage"></div>
+  <script>
+    let audioContext;
+    let recorder;
+    let chunks = [];
+    let recording = false;
+    let timer;
+    let lastAudioDetectedTime;
+
+    const statusMessageElement = document.getElementById('statusMessage');
+
+    // 음성 감지 및 녹음 시작
+    function startListening() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          audioContext = new AudioContext();
+          const source = audioContext.createMediaStreamSource(stream);
+          const processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+          processor.onaudioprocess = function(event) {
+            const inputData = event.inputBuffer.getChannelData(0);
+            const bufferLength = inputData.length;
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+              sum += Math.abs(inputData[i]);
+            }
+            const average = sum / bufferLength;
+            if (average > 0.01 && !recording) { // 음성이 감지되고 녹음 중이 아닌 경우에만 녹음 시작
+              startRecording(stream);
+            } else if (average <= 0.01 && recording) { // 음성이 감지되지 않고 녹음 중인 경우에 녹음 종료
+              lastAudioDetectedTime = Date.now(); // 마지막으로 음성이 감지된 시간 기록
+            }
+          };
+
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+        })
+        .catch(error => console.error('Error accessing microphone:', error));
+    }
+
+    // 녹음 시작
+    async function startRecording(stream) {
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = event => {
+        chunks.push(event.data);
+      };
+      recorder.onstop = async () => {
+        try {
+          const formData = new FormData();
+          formData.append('audio', new Blob(chunks, { type: 'audio/wav' }));
+          const response = await fetch('{% url "transcribe_audio" %}', {
+              method: 'POST',
+              body: formData,
+          });
+          const data = await response.json();
+          console.log('Transcripts:', data.transcripts);
+          chunks = [];
+          recording = false;
+          statusMessageElement.textContent = '녹음 종료';
+        }
+        catch (error) {
+          console.error('Error in mediaRecorder.onstop:', error);
+        }
+      };
+      recorder.start();
+      recording = true;
+      statusMessageElement.textContent = '녹음 시작';
+      startTimer();
+    }
     
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
-
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space') {
-                if (!isRecording) {
-                    startRecording();
-                    isRecording = true;
-                }
-            }
-        });
-
-        document.addEventListener('keyup', (event) => {
-            if (event.code === 'Space') {
-                if (isRecording) {
-                    stopRecording();
-                    isRecording = false;
-                }
-            }
-        });
-
-        function startRecording() {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    mediaRecorder = new MediaRecorder(stream);
-
-                    mediaRecorder.ondataavailable = event => {
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = async () => {
-                        try {
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            const audioUrl = URL.createObjectURL(audioBlob);
-                            document.getElementById('audioPlayer').src = audioUrl;
-                    
-                            const formData = new FormData();
-                            formData.append('audio', audioBlob);
-                            const response = await fetch('{% url "transcribe_audio" %}', {
-                                method: 'POST',
-                                body: formData,
-                            });
-                    
-                            const data = await response.json();
-                            console.log('Transcripts:', data.transcripts);
-
-                        } catch (error) {
-                            console.error('Error in mediaRecorder.onstop:', error);
-                        }
-                    };
-
-                    mediaRecorder.start();
-                })
-                .catch(error => console.error('Error accessing microphone:', error));
+    // 타이머 시작
+    function startTimer() {
+      timer = setTimeout(() => {
+        stopRecording();
+      }, 3000); // 3초 후에 녹음 종료
+    }
+    
+    function stopRecording() {
+        if (recording) {
+          recorder.stop();
         }
-
-        function stopRecording() {
-            mediaRecorder.stop();
-        }
-    </script>
+      }
+    // 페이지 로드 시 음성 감지 시작
+    startListening();
+  </script>
 </body>
 </html>

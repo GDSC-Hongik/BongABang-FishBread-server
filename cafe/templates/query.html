@@ -118,75 +118,90 @@
 					}
 				}); 
 			}); 
-		}); 
-		let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
+		});
 
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space') {
-                if (!isRecording) {
-                    startRecording();
-                    isRecording = true;
-                }
+    let audioContext;
+    let recorder;
+    let chunks = [];
+    let recording = false;
+    let timer;
+    let lastAudioDetectedTime;
+
+    // 음성 감지 및 녹음 시작
+    function startListening() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          audioContext = new AudioContext();
+          const source = audioContext.createMediaStreamSource(stream);
+          const processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+          processor.onaudioprocess = function(event) {
+            const inputData = event.inputBuffer.getChannelData(0);
+            const bufferLength = inputData.length;
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+              sum += Math.abs(inputData[i]);
             }
-        });
-
-        document.addEventListener('keyup', (event) => {
-            if (event.code === 'Space') {
-                if (isRecording) {
-                    stopRecording();
-                    isRecording = false;
-                }
+            const average = sum / bufferLength;
+            if (average > 0.01 && !recording) { // 음성이 감지되고 녹음 중이 아닌 경우에만 녹음 시작
+              startRecording(stream);
+            } else if (average <= 0.01 && recording) { // 음성이 감지되지 않고 녹음 중인 경우에 녹음 종료
+              lastAudioDetectedTime = Date.now(); // 마지막으로 음성이 감지된 시간 기록
             }
-        });
+          };
 
-        function startRecording() {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    mediaRecorder = new MediaRecorder(stream);
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+        })
+        .catch(error => console.error('Error accessing microphone:', error));
+    }
 
-                    mediaRecorder.ondataavailable = event => {
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = async () => {
-                        try {
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            const audioUrl = URL.createObjectURL(audioBlob);
-                            document.getElementById('audioPlayer').src = audioUrl;
-                    
-                            const formData = new FormData();
-                            formData.append('audio', audioBlob);
-                            const response = await fetch('{% url "transcribe_audio" %}', {
-                                method: 'POST',
-                                body: formData,
-                            });
-							$('#prompt').val('');
-                            const data = await response.json();
-                            console.log('Transcripts:', data.transcripts);
-							$('#prompt').val(data.transcripts[0]); 
-							$('form').submit();
-
-                        } catch (error) {
-                            console.error('Error in mediaRecorder.onstop:', error);
-                        }
-                    };
-
-                    mediaRecorder.start();
-                })
-                .catch(error => console.error('Error accessing microphone:', error));
+    // 녹음 시작
+    async function startRecording(stream) {
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = event => {
+        chunks.push(event.data);
+      };
+      recorder.onstop = async () => {
+        try {
+          const formData = new FormData();
+          formData.append('audio', new Blob(chunks, { type: 'audio/wav' }));
+          const response = await fetch('{% url "transcribe_audio" %}', {
+              method: 'POST',
+              body: formData,
+          });
+        $('#prompt').val('');
+        const data = await response.json();
+        console.log('Transcripts:', data.transcripts);
+        $('#prompt').val(data.transcripts[0]); 
+        $('form').submit();
+          chunks = [];
+          recording = false;
         }
-
-        function stopRecording() {
-            mediaRecorder.stop();
-			audioChunks = [];
+        catch (error) {
+          console.error('Error in mediaRecorder.onstop:', error);
         }
-	
-			
-		</script>
+      };
+      recorder.start();
+      recording = true;
+      startTimer();
+    }
+    
+    // 타이머 시작
+    function startTimer() {
+      timer = setTimeout(() => {
+        stopRecording();
+      }, 3000); // 3초 후에 녹음 종료
+    }
+    
+    function stopRecording() {
+        if (recording) {
+          recorder.stop();
+        }
+      }
+    // 페이지 로드 시 음성 감지 시작
+    startListening();
+    </script>
 	
 	
 	
