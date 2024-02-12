@@ -1,5 +1,6 @@
 import openai
-import os
+import json
+import io
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -7,6 +8,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import ValidationError
 from google.cloud import texttospeech
+from google.cloud.speech_v1 import types
 from django.http import JsonResponse, FileResponse,HttpResponseNotFound
 from django.contrib.auth import login as django_login, authenticate
 from django.shortcuts import render,redirect
@@ -22,7 +24,6 @@ from django.conf import settings
 import os, re
 from .models import Menu
 from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
-
 def get_audio_file(request, file_name):
     file_path = os.path.join(settings.MEDIA_ROOT, file_name)
 
@@ -107,11 +108,8 @@ def query_view(request):
 		response = get_completion(prompt)
 		return JsonResponse({'response': response}) 
 	return render(request, 'query.html') 
-
 def RealTimeSTT(request):
     return render(request,'stt.html')
-
-
 
 def convert_sample_rate(input_file, target_sample_rate):
     sound = AudioSegment.from_file(input_file)
@@ -132,8 +130,9 @@ def transcribe_audio(request):
             # 로컬 디렉터리에 저장 (media/audio/ 하위에 저장됨)
             # 현재 시간을 기반으로 파일 이름 생성
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            file_name = f"audio_{timestamp}.wav"
+            file_name = f"inputaudio_{timestamp}.wav"
             file_path = os.path.join(settings.MEDIA_ROOT, 'audio', file_name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             # 음성 데이터 저장하기
             with open(file_path, 'wb') as destination:
                 for chunk in audio_file.chunks():
@@ -158,20 +157,17 @@ def transcribe_audio(request):
             response = client.recognize(config=config, audio=audio)
             # Each result is for a consecutive portion of the audio. Iterate through
             # them to get the transcripts for the entire audio file.
+            for idx,i in enumerate(response.results):
+                print("idx:",idx, "i:",i)
             transcripts = [result.alternatives[0].transcript for result in response.results]
+            print("transcripts[0]",transcripts[0])
+            print("transcripts[-1]",transcripts[-1])
 
             return JsonResponse({'status': 'success', 'transcripts': transcripts})
         else:
             return JsonResponse({'status': 'error', 'message': 'No audio file provided'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-    if audio_files:
-        latest_file = audio_files[0]  # 가장 큰 숫자를 가진 파일
-        print(latest_file)
-        return JsonResponse({'latest_audio': latest_file})
-    else:
-        print("no latest_file")
-        return JsonResponse({'error': 'No audio files found'})
 
 def get_completion(request, user_input): 
     # 대화 이력 확인 및 업데이트
@@ -235,9 +231,9 @@ def run_text_to_speech(text, post_count,now):
     )
     
     # 새로운 파일 이름 생성
-    output_file_name = f"newoutput_v{post_count}{now}.mp3"
+    output_file_name = f"newoutput_v{post_count}_{now}.mp3"
     output_file_path = os.path.join(settings.MEDIA_ROOT, output_file_name)
-    print("output_file_path",output_file_path)
+    print("output_file_path 저장위치:",output_file_path)
     response = client.synthesize_speech(
         input=synthesis_input, voice=voice, audio_config=audio_config
     )
@@ -258,13 +254,13 @@ def query_view(request):
         # 사용자 입력이 유효한 경우에만 음성 파일 생성 로직 실행
         if user_input:
             response = get_completion(request, user_input)
-            now = str(datetime.now())
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
             # 새로운 파일 이름을 얻어옴
             post_count = request.session.get('post_count', 0)
             post_count += 1
             request.session['post_count'] = post_count
-            new_audio_file_name, new_audio_file_path = run_text_to_speech(response, post_count, now)
+            new_audio_file_name, new_audio_file_path = run_text_to_speech(response, post_count, timestamp)
             
             # 현재 MP3 파일 경로를 세션에 저장
             request.session['audio_file_path'] = new_audio_file_path

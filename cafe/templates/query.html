@@ -7,7 +7,70 @@
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script> 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous"> 
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css" integrity="sha384-b6lVK+yci+bfDmaY1u0zE8YYJt0TZxLEAFyYSLHId4xoVvsrQu3INevFKo+Xir8e" crossorigin="anonymous"> 
-	
+	<style>
+		body {
+            background-color: #FFF;
+            color: #333;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .chat-container {
+            background-color: #f8f9fa;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            overflow: auto;
+            height: 500px;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 20px;
+            width: fit-content;
+            max-width: 70%;
+        }
+        .user-message {
+            background-color: #e0a800;
+            color: #FFF;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .bot-message {
+            background-color: #ffc107;
+            color: #333;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        .chat-input {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-top: 2px solid #ffc107;
+        }
+        .chat-input textarea {
+            flex-grow: 1;
+            margin-right: 10px;
+            border-color: #ffc107;
+        }
+        .btn-primary {
+            background-color: #e0a800;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #d99e00;
+        }
+        #audioPlayer {
+            visibility: hidden;
+            height: 1px;
+            width: 1px;
+        }
+		
+    </style>
 	<script> 
 		$(document).ready(function() { 
 			$('#prompt').keypress(function(event) { 
@@ -56,7 +119,74 @@
 				}); 
 			}); 
 		}); 
-	</script>
+		let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                if (!isRecording) {
+                    startRecording();
+                    isRecording = true;
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.code === 'Space') {
+                if (isRecording) {
+                    stopRecording();
+                    isRecording = false;
+                }
+            }
+        });
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        try {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            document.getElementById('audioPlayer').src = audioUrl;
+                    
+                            const formData = new FormData();
+                            formData.append('audio', audioBlob);
+                            const response = await fetch('{% url "transcribe_audio" %}', {
+                                method: 'POST',
+                                body: formData,
+                            });
+							$('#prompt').val('');
+                            const data = await response.json();
+                            console.log('Transcripts:', data.transcripts);
+							$('#prompt').val(data.transcripts[0]); 
+							$('form').submit();
+
+                        } catch (error) {
+                            console.error('Error in mediaRecorder.onstop:', error);
+                        }
+                    };
+
+                    mediaRecorder.start();
+                })
+                .catch(error => console.error('Error accessing microphone:', error));
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+			audioChunks = [];
+        }
+	
+			
+		</script>
 	
 	
 	
@@ -64,26 +194,30 @@
 <body> 
 	<div class="container p-3"> 
 		<h3>ChatGPT Clone</h3> 
-		<div class="mb-3"> 
-			<form method="post"> 
-				{% csrf_token %} 
-				<label for="prompt" class="form-label"><strong>Prompt: </strong></label> 
-				<textarea class="form-control" type="textarea" id="prompt" name="prompt" rows="3"></textarea> 
-				<br> 
-				<button class="btn btn-primary" type="submit">Submit</button> 
-			</form> 
-		</div> 
-		<br> 
-		<div class="mb-3"> 
-			<h6>Response:</h6> 
-			<div class="container border overflow-auto h-50" id="response">
-				{% for entry in history %}
-            		<p><strong>User:</strong> {{ entry.user }}</p>
-            		<p><strong>Bot:</strong> {{ entry.bot }}</p>
-        		{% endfor %}
-			</div> 
-			
-		</div> 
+		<p>Press and hold the spacebar to record audio. Release the spacebar to stop recording.</p>
+
+		<div class="chat-container" id="response">
+            {% for entry in history %}
+            	{% comment %} <p><strong>User:</strong> {{ entry.user }}</p>
+            	<p><strong>Bot:</strong> {{ entry.bot }}</p> {% endcomment %}
+                <div class="chat-message user-message">{{ entry.user }}</div>
+                <div class="chat-message bot-message">{{ entry.bot }}</div>
+        	{% endfor %}
+        </div>
+        <audio id="audioPlayer" controls></audio>
+        <div class="chat-input">
+            <form method="post" class="d-flex align-items-center">
+                <div class="flex-grow-1 me-2">
+                    <label for="prompt" class="form-label">Prompt:</label>
+                    <textarea class="form-control" id="prompt" name="prompt" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            
+        </div>
+		
 	</div> 
+    <audio id="audioPlayer" controls></audio>
+
 </body> 
 </html> 

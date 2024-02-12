@@ -1,7 +1,7 @@
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import CafeOwnerRegisterView,CustomLoginView,register,login,home,query_view,cafe_menu,some_menu,get_audio_file,get_latest_audio,home,cafe_menu,some_menu,query_view, RealTimeSTT, transcribe_audio
+from .views import CafeOwnerRegisterView,CustomLoginView,register,login,home,query_view,cafe_menu,some_menu,home,cafe_menu,some_menu,query_view, RealTimeSTT, transcribe_audio
 urlpatterns = [
     path('register/', register, name='register'),
     path('login/', login, name='login'),
