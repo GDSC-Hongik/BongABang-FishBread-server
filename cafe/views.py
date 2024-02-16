@@ -1,34 +1,24 @@
-import openai
-import json
-import io
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from numpy import dot
-from numpy.linalg import norm
-import time
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, FileResponse, HttpResponseNotFound
+from django.contrib.auth import login as django_login
+from django.conf import settings
+import os, re
+from datetime import datetime
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.exceptions import ValidationError
-from google.cloud import texttospeech
-from google.cloud.speech_v1 import types
-from django.http import JsonResponse, FileResponse,HttpResponseNotFound
-from django.contrib.auth import login as django_login, authenticate
-from django.shortcuts import render,redirect
-from google.protobuf.json_format import MessageToDict
-from google.cloud import speech
-from datetime import datetime
+
+from google.cloud import texttospeech, speech
+
 from pydub import AudioSegment
-import base64
-from django.views import View
 import openai
-from datetime import datetime
-from django.conf import settings
-import os, re
+
 from .models import Menu
-from .serializers import CafeOwnerRegisterSerializer,CustomLoginSerializer
+from .serializers import CafeOwnerRegisterSerializer, CustomLoginSerializer
+
 def get_audio_file(request, file_name):
     file_path = os.path.join(settings.MEDIA_ROOT, file_name)
 
@@ -170,18 +160,6 @@ def transcribe_audio(request):
             return JsonResponse({'status': 'error', 'message': 'No audio file provided'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-def calculate_similarity_with_fixed_sentence_order_done(input_sentence):
-    sentences = ["주문을 완료하고싶어."]
-    sentences.append(input_sentence)
-    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-    embeddings = model.encode(sentences)
-    return dot(embeddings[0], embeddings[1]) / (norm(embeddings[0]) * norm(embeddings[1]))
-def calculate_similarity_with_fixed_sentence_get_shop(input_sentence):
-    sentences = ["장바구니에 담고싶어."]
-    sentences.append(input_sentence)
-    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-    embeddings = model.encode(sentences)
-    return dot(embeddings[0], embeddings[1]) / (norm(embeddings[0]) * norm(embeddings[1]))
 def get_completion(request, user_input): 
     # 대화 이력 확인 및 업데이트
     if 'history' not in request.session:
@@ -213,34 +191,21 @@ def get_completion(request, user_input):
             If the menu_type is 'onlyice', only cold drinks are available, and if it is 'both', both cold and hot drinks are available, so we need to ask them to select an option,
             If it's 'onlyhot', it's only hot drinks, and if it's 'no_temperature', there's no temperature option, so we shouldn't ask for it.
             
-            <Menu>
-            [{'할메가커피'}, {'왕할메가커피'}, {'아메리카노'}, {'메가리카노'}, {'꿀아메리카노'}, {'바닐라아메리카노'}, {'헤이즐넛아메리카노'}, {'카페라떼'}, {'카푸치노'}, {'바닐라라떼'}, {'헤이즐넛라떼'}, {'연유라떼'}, {'카라멜마끼아또'}, {'카페모카'}, {'콜드브루오리지널'}, {'콜드브루라떼'}, {'티라미수라떼'}, {'큐브라떼'}, {'콜드브루디카페인'}, {'콜드브루디카페인라떼'}, {'딸기라떼'}, {'고구마라떼'}, {'곡물라떼'}, {'메가초코'}, {'토피넛라떼'}, {'오레오초코라떼'}, {'흑당버블밀크티라떼'}, {'흑당버블라떼'}, {'메가초코'}, {'녹차라떼'}, {'핫초코'}, {'로얄밀크티라떼'}, {'디카페인 아메리카노'}, {'디카페인 꿀아메리카노'}, {'디카페인 헤이즐넛 아메리카노'}, {'디카페인 바닐라 아메리카노'}, {'디카페인 카페라떼'}, {'디카페인 바닐라라떼'}, {'디카페인 연유라떼'}, {'디카페인 카라멜마끼아또'}, {'디카페인 카페모카'}, {'디카페인 카푸치노'}, {'디카페인헤이즐넛라떼'}, {'디카페인티라미수라떼'}, {'디카페인 메가리카노'}, {'화이트 뱅쇼'}, {'복숭아아이스티'}, {'허니자몽블랙티'}, {'사과유자차'}, {'유자차'}, {'레몬차'}, {'자몽차'}, {'녹차'}, {'페퍼민트'}, {'캐모마일'}, {'얼그레이'}, {'스모어 블랙쿠키 프라페'}, {'스모어 카라멜쿠키 프라페'}, {'코코넛커피 스무디'}, {'플레인퐁 크러쉬'}, {'초코허니퐁 크러쉬'}, {'슈크림허니 퐁크러쉬'}, {'딸기퐁 크러쉬'}, {'바나나퐁 크러쉬'}, {'쿠키프라페'}, {'딸기쿠키 프라페'}, {'민트프라페'}, {'커피프라페'}, {'리얼초코프라페'}, {'녹차프라페'}, {'스트로베리 치즈홀릭'}, {'플레인요거트 스무디'}, {'딸기요거트 스무디'}, {'망고요거트 스무디'}, {'스노우 샹그리아 에이드'}, {'레드오렌지 자몽주스'}, {'샤인머스캣 그린주스'}, {'딸기주스'}, {'딸기바나나 주스'}, {'메가에이드'}, {'레몬에이드'}, {'블루레몬 에이드'}, {'자몽에이드'}, {'청포도에이드'}, {'유니콘매직에이드 (핑크)'}, {'유니콘매직에이드 (블루)'}, {'체리콕'}, {'라임모히또'}, {'따끈따끈 간식꾸러미'}, {'초코스모어 쿠키'}, {'뚱크림치즈약과쿠키'}, {'와앙 피자 보름달빵'}, {'와앙 콘마요 보름달빵'}, {'오트밀 팬케이크'}, {'티라미수 팬케이크'}, {'그래놀라 스모어쿠키'}, {'크로크무슈'}, {'버터버터소금빵'}, {'햄앤치즈샌드'}, {'아이스허니 와앙슈'}, {'몽쉘케이크'}, {'말차스모어 쿠키'}, {'플레인크로플'}, {'아이스크림 크로플'}, {'머그(옐로우)'}, {'메가엠지씨스틱 오리지날 아메리카노'}, {'메가엠지씨스틱 디카페인 아메리카노'}, {'메가엠지씨스틱 스테비아 믹스커피'}, {'메가 엠지씨 스틱 스테비아 디카페인 믹스커피'}, {'스테비아 케이스'}, {'메가 엠지씨 티플레저 블루밍 캐모마일'}, {'메가 엠지씨 티플레저 프루티 루이보스'}, {'메가 엠지씨 티플레저 스위트 히비스커스'}, {'MGC 텀블러(웜그레이)'}, {'MGC 텀블러(옐로우)'}, {'MGC 텀블러(스카이)'}, {'텀블러(실버)'}, {'텀블러(브론즈)'}, {'텀블러(화이트)'}]
-            
-            """},
-            {'role':'user','content': "너가 계속해서 내 이전 대화와 현재 대화를 듣고 주문을 받아줘"},
+            ## Menu:
+            할메가커피 , 0 , 1900 , 0 , onlyice / 왕할메가커피 , 0 , 2900 , 0 , onlyice / 아메리카노 , 1500 , 2000 , 0 , both / 메가리카노 , 0 , 3000 , 0 , onlyice / 꿀아메리카노 , 2700 , 2700 , 0 , both / 바닐라아메리카노 , 2700 , 2700 , 0 , both / 헤이즐넛아메리카노 , 2700 , 2700 , 0 , both / 카페라떼 , 2900 , 2900 , 0 , both / 카푸치노 , 2900 , 2900 , 0 , both / 바닐라라떼 , 3400 , 3400 , 0 , both / 헤이즐넛라떼 , 3400 , 3400 , 0 , both / 연유라떼 , 3900 , 0 , 0 , onlyhot / 카라멜마끼아또 , 3700 , 3700 , 0 , both / 카페모카 , 3900 , 3900 , 0 , both / 콜드브루오리지널 , 3500 , 3500 , 0 , both / 콜드브루라떼 , 4000 , 4000 , 0 , both / 티라미수라떼 , 3900 , 3900 , 0 , both / 큐브라떼 , 0 , 4200 , 0 , onlyice / 콜드브루디카페인 , 3500 , 3500 , 0 , both / 콜드브루디카페인라떼 , 4000 , 4000 , 0 , both / 딸기라떼 , 0 , 3700 , 0 , onlyice / 고구마라떼 , 3500 , 3500 , 0 , both / 곡물라떼 , 3300 , 3300 , 0 , both / 메가초코 , 3800 , 3800 , 0 , both / 토피넛라떼 , 3800 , 3800 , 0 , both / 오레오초코라떼 , 0 , 3900 , 0 , onlyice / 흑당버블밀크티라떼 , 0 , 3800 , 0 , onlyice / 흑당버블라떼 , 0 , 3700 , 0 , onlyice / 메가초코 , 3800 , 3800 , 0 , both / 녹차라떼 , 3500 , 3500 , 0 , both / 핫초코 , 3500 , 0 , 0 , onlyhot / 로얄밀크티라떼 , 3700 , 0 , 0 , onlyhot / 디카페인 아메리카노 , 2500 , 3000 , 0 , both / 디카페인 꿀아메리카노 , 3700 , 3700 , 0 , both / 디카페인 헤이즐넛 아메리카노 , 3700 , 3700 , 0 , both / 디카페인 바닐라 아메리카노 , 3700 , 3700 , 0 , both / 디카페인 카페라떼 , 3900 , 3900 , 0 , both / 디카페인 바닐라라떼 , 4400 , 4400 , 0 , both / 디카페인 연유라떼 , 4900 , 0 , 0 , onlyhot / 디카페인 카라멜마끼아또 , 4700 , 4700 , 0 , both / 디카페인 카페모카 , 4900 , 4900 , 0 , both / 디카페인 카푸치노 , 3900 , 3900 , 0 , both / 디카페인헤이즐넛라떼 , 4400 , 4400 , 0 , both / 디카페인티라미수라떼 , 4900 , 4900 , 0 , both / 디카페인 메가리카노 , 0 , 4500 , 0 , onlyice / 복숭아아이스티 , 0 , 3000 , 0 , onlyice / 허니자몽블랙티 , 3700 , 3700 , 0 , both / 사과유자차 , 3500 , 3500 , 0 , both / 유자차 , 3300 , 3300 , 0 , both / 레몬차 , 3300 , 3300 , 0 , both / 자몽차 , 3300 , 3300 , 0 , both / 녹차 , 2500 , 2500 , 0 , both / 페퍼민트 , 2500 , 2500 , 0 , both / 캐모마일 , 2500 , 2500 , 0 , both / 얼그레이 , 2500 , 2500 , 0 , both / 코코넛커피 스무디 , 0 , 0 , 4800 , no_temperature / 플레인퐁 크러쉬 , 0 , 0 , 3900 , no_temperature / 초코허니퐁 크러쉬 , 0 , 0 , 3900 , no_temperature / 슈크림허니 퐁크러쉬 , 0 , 0 , 3900 , no_temperature / 딸기퐁 크러쉬 , 0 , 0 , 3900 , no_temperature / 바나나퐁 크러쉬 , 0 , 0 , 3900 , no_temperature / 쿠키프라페 , 0 , 0 , 3900 , no_temperature / 딸기쿠키 프라페 , 0 , 0 , 3900 , no_temperature"""},
             {'role':'user','content': full_prompt}
         ], 
         max_tokens=1024, 
         n=1, 
         stop=None, 
-        temperature=0.1, 
+        temperature=0.001, 
     ) 
     response = query.choices[0].message["content"]
-
     # 새 대화 내역 추가
     request.session['history'].append({'user': user_input, 'bot': response})
-    print(response)
-    similarity_score_user = calculate_similarity_with_fixed_sentence_order_done(user_input)
-    similarity_score_bot = calculate_similarity_with_fixed_sentence_order_done(response)
-
-    # 유사도 임계값 설정 (예: 0.7)
-    threshold = 0.7
-    if similarity_score_user > threshold or similarity_score_bot > threshold:
-        print("주문완료")
     return response
 
 def run_text_to_speech(text, post_count,now):
-    # os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/jeonjisu/Desktop/university/project/BongABang-FishBread-server/codebook/bong-a-bang-412508-9e4d0ff505ce.json"
     client = texttospeech.TextToSpeechClient()
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
