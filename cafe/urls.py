@@ -10,5 +10,4 @@ urlpatterns = [
     path('chatgpt/',query_view, name='query_view'),
     path('stt/',RealTimeSTT,name='stt'),
     path('transcribe_audio',transcribe_audio,name='transcribe_audio'),
-    path('', home, name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
