@@ -68,46 +68,45 @@ class CustomLoginView(APIView):
             
 def register(request):
     if request.method == 'POST':
-        print("post")
         serializer = CafeOwnerRegisterSerializer(data=request.POST)
         if serializer.is_valid():
             serializer.save()
-            return render(request, 'login.html')
-        return redirect('/api/cafe/v1/register/')
+            # 회원가입 성공 시 사용자가 입력한 내용을 JSON으로 반환
+            return JsonResponse({
+                'email': serializer.validated_data.get('email'),
+                'owner_phone_number': serializer.validated_data.get('owner_phone_number'),
+                'owner_name': serializer.validated_data.get('owner_name'),
+                'cafe_name': serializer.validated_data.get('cafe_name'),
+                'cafe_address': serializer.validated_data.get('cafe_address'),
+                'cafe_phone_number': serializer.validated_data.get('cafe_phone_number')
+            })
+        # 유효성 검사 실패 시 에러 메시지를 포함한 JSON 반환
+        return JsonResponse({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)
     else:
-        print(request.method)
-        print("예외")
         return render(request, 'register.html')
+    
 def login(request):
     if request.method == 'POST':
-        print("또 post")
         serializer = CustomLoginSerializer(data=request.POST)
         if serializer.is_valid():
             user = serializer.validated_data
             django_login(request, user)
             print("로그인성공")
-            return redirect('api/cafe/v1/') 
+            # 로그인에 성공한 경우 유저의 이메일을 JSON으로 반환
+            return JsonResponse({
+                'email': user.email,
+                'name': user.owner_name
+            })
         else:
             print("로그인실패")
-            return render(request, 'login.html', {'error_message': '유효하지 않은 로그인 정보입니다.'})
+            error_message = '유효하지 않은 로그인 정보입니다.'
+            return JsonResponse({'error_message': error_message}, status=400)
     else:
-        # GET 요청인 경우, 로그인 폼을 보여줌
-        print("또 get")
         return render(request, 'login.html')
+
 
 def home(request):
     return render(request, 'index.html')
-
-def cafe_menu(request):
-    cafe_menu_items = Menu.objects.all()
-    return render(request, 'cafe_menu.html', {'cafe_menu': cafe_menu_items})
-
-def some_menu(request):
-    menus = Menu.objects.filter(price_ice__gte=3000)
-    return render(request, 'cafe_menu.html', {'cafe_menu': menus})
-
-# def RealTimeSTT(request):
-#     return render(request,'stt.html')
 
 def convert_sample_rate(input_file, target_sample_rate):
     sound = AudioSegment.from_file(input_file)
@@ -115,132 +114,39 @@ def convert_sample_rate(input_file, target_sample_rate):
     sound = sound.set_sample_width(2)  # 2바이트(16비트) 샘플로 설정
     sound.export(input_file, format="wav")
 
-# def transcribe_audio(request):
-#     if request.method == 'POST':
-#         # Audio recording parameters
-#         RATE = 16000
-#         CHUNK = int(RATE / 10)  # 100ms
-
-#         if 'audio' in request.FILES:
-#             # 음성 데이터 가져오기
-#             audio_file = request.FILES['audio']
-
-#             # 로컬 디렉터리에 저장 (media/audio/ 하위에 저장됨)
-#             # 현재 시간을 기반으로 파일 이름 생성
-#             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-#             file_name = f"inputaudio_{timestamp}.wav"
-#             file_path = os.path.join(settings.MEDIA_ROOT, 'audio', file_name)
-#             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-#             # 음성 데이터 저장하기
-#             with open(file_path, 'wb') as destination:
-#                 for chunk in audio_file.chunks():
-#                     destination.write(chunk)
-
-#             # Convert the sample rate of the audio file to 16kHz
-#             convert_sample_rate(file_path, RATE)
-            
-#             client = speech.SpeechClient()
-            
-#             with open(file_path, "rb") as audio_file_2:
-#                 content = audio_file_2.read()
-
-#             audio = speech.RecognitionAudio(content=content)
-#             config = speech.RecognitionConfig(
-#                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-#                 sample_rate_hertz=16000,
-#                 language_code="ko-KR",
-#                 enable_automatic_punctuation=True,
-#             )
-
-#             try:
-#                 response = client.recognize(config=config, audio=audio)
-#                 transcripts = [result.alternatives[0].transcript for result in response.results]
-#                 return Response({'status': 'success', 'transcripts': transcripts})
-#             except Exception as e:
-#                 return Response({'status': 'error', 'message': str(e)})
-
-    #     else:
-    #         return Response({'status': 'error', 'message': 'No audio file provided'})
-
-    # return Response({'status': 'error', 'message': 'Invalid request method'})
 def transcribe_audio(request):
     if request.method == 'POST':
         # Audio recording parameters
         RATE = 16000
         CHUNK = int(RATE / 10)  # 100ms
 
-        # AWS S3 연결 설정
-        s3 = boto3.client('s3', aws_access_key_id='AWS_ACCESS_KEY_ID', aws_secret_access_key='AWS_SECRET_ACCESS_KEY')
-
-        # S3 버킷에서 가장 최근에 업로드된 객체 가져오기
-        bucket_name = 'AWS_STORAGE_BUCKET_NAME'
-        response = s3.list_objects_v2(Bucket=bucket_name)
-        latest_file = max(response['Contents'], key=lambda x: x['LastModified'])
-
-        # S3에서 파일 다운로드
-        file_path = os.path.join(settings.MEDIA_ROOT, 'audio', latest_file['Key'])
-        s3.download_file(bucket_name, latest_file['Key'], file_path)
-
-        # Google STT 클라이언트 생성
-        client = speech.SpeechClient()
-
-        # 파일 읽기
-        with open(file_path, "rb") as audio_file:
-            content = audio_file.read()
-
-        audio = speech.RecognitionAudio(content=content)
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code="ko-KR",
-            enable_automatic_punctuation=True,
-        )
-
-        try:
-            # Google STT API 호출
-            response = client.recognize(config=config, audio=audio)
-            transcripts = [result.alternatives[0].transcript for result in response.results]
-            return JsonResponse({'status': 'success', 'transcripts': transcripts})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-class TranscribeAudioView(APIView):
-    def post(self, request, *args, **kwargs):
-        RATE = 16000
-
         if 'audio' in request.FILES:
+            # 음성 데이터 가져오기
             audio_file = request.FILES['audio']
+
+            # 로컬 디렉터리에 저장 (media/audio/ 하위에 저장됨)
+            # 현재 시간을 기반으로 파일 이름 생성
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             file_name = f"inputaudio_{timestamp}.wav"
-            file_path = f"audio/{file_name}"
+            file_path = os.path.join(settings.MEDIA_ROOT, 'audio', file_name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # 음성 데이터 저장하기
+            with open(file_path, 'wb') as destination:
+                for chunk in audio_file.chunks():
+                    destination.write(chunk)
+
+            # Convert the sample rate of the audio file to 16kHz
+            convert_sample_rate(file_path, RATE)
             
-            # boto3를 사용하여 S3에 파일 업로드
-            s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-            s3_client.upload_fileobj(audio_file, settings.AWS_STORAGE_BUCKET_NAME, file_path)
-
-            # S3에서 파일 다운로드하여 로컬에 임시 저장
-            local_file_path = f"/tmp/{file_name}"
-            s3_client.download_file(settings.AWS_STORAGE_BUCKET_NAME, file_path, local_file_path)
-
-            # 샘플레이트 변경
-            converted_file_path = f"/tmp/converted_{file_name}"
-            convert_sample_rate(local_file_path, RATE, converted_file_path)
-            
-            # 변환된 파일을 다시 S3에 업로드
-            with open(converted_file_path, 'rb') as converted_file:
-                s3_client.upload_fileobj(converted_file, settings.AWS_STORAGE_BUCKET_NAME, f"converted_audio/{file_name}")
-
             client = speech.SpeechClient()
             
-            # Google Cloud Speech-to-Text에 사용할 파일의 URL
-            audio_file_url = f"s3://{settings.AWS_STORAGE_BUCKET_NAME}/audio/{file_name}"
-            
-            audio = speech.RecognitionAudio(uri=audio_file_url)
+            with open(file_path, "rb") as audio_file_2:
+                content = audio_file_2.read()
+
+            audio = speech.RecognitionAudio(content=content)
             config = speech.RecognitionConfig(
                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=RATE,
+                sample_rate_hertz=16000,
                 language_code="ko-KR",
                 enable_automatic_punctuation=True,
             )
@@ -248,12 +154,109 @@ class TranscribeAudioView(APIView):
             try:
                 response = client.recognize(config=config, audio=audio)
                 transcripts = [result.alternatives[0].transcript for result in response.results]
+                 # STT 작업이 완료된 후에 음성 데이터 파일을 삭제합니다.
+                if os.path.exists(file_path):
+                    os.remove(file_path)
                 return Response({'status': 'success', 'transcripts': transcripts})
             except Exception as e:
-                return Response({'status': 'error', 'message': str(e)}, status=400)
+                return Response({'status': 'error', 'message': str(e)})
 
         else:
-            return Response({'status': 'error', 'message': 'No audio file provided'}, status=400)
+            return Response({'status': 'error', 'message': 'No audio file provided'})
+
+    return Response({'status': 'error', 'message': 'Invalid request method'})
+# def transcribe_audio(request):
+#     if request.method == 'POST':
+#         # Audio recording parameters
+#         RATE = 16000
+#         CHUNK = int(RATE / 10)  # 100ms
+
+#         # AWS S3 연결 설정
+#         s3 = boto3.client('s3', aws_access_key_id='AWS_ACCESS_KEY_ID', aws_secret_access_key='AWS_SECRET_ACCESS_KEY')
+
+#         # S3 버킷에서 가장 최근에 업로드된 객체 가져오기
+#         bucket_name = 'AWS_STORAGE_BUCKET_NAME'
+#         response = s3.list_objects_v2(Bucket=bucket_name)
+#         latest_file = max(response['Contents'], key=lambda x: x['LastModified'])
+
+#         # S3에서 파일 다운로드
+#         file_path = os.path.join(settings.MEDIA_ROOT, 'audio', latest_file['Key'])
+#         s3.download_file(bucket_name, latest_file['Key'], file_path)
+
+#         # Google STT 클라이언트 생성
+#         client = speech.SpeechClient()
+
+#         # 파일 읽기
+#         with open(file_path, "rb") as audio_file:
+#             content = audio_file.read()
+
+#         audio = speech.RecognitionAudio(content=content)
+#         config = speech.RecognitionConfig(
+#             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+#             sample_rate_hertz=16000,
+#             language_code="ko-KR",
+#             enable_automatic_punctuation=True,
+#         )
+
+#         try:
+#             # Google STT API 호출
+#             response = client.recognize(config=config, audio=audio)
+#             transcripts = [result.alternatives[0].transcript for result in response.results]
+#             return JsonResponse({'status': 'success', 'transcripts': transcripts})
+#         except Exception as e:
+#             return JsonResponse({'status': 'error', 'message': str(e)})
+
+#     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+class TranscribeAudioView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Audio recording parameters
+        RATE = 16000
+        CHUNK = int(RATE / 10)  # 100ms
+
+        if 'audio' in request.FILES:
+            # 음성 데이터 가져오기
+            audio_file = request.FILES['audio']
+
+            # 로컬 디렉터리에 저장 (media/audio/ 하위에 저장됨)
+            # 현재 시간을 기반으로 파일 이름 생성
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            file_name = f"inputaudio_{timestamp}.wav"
+            file_path = os.path.join(settings.MEDIA_ROOT, 'audio', file_name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # 음성 데이터 저장하기
+            with open(file_path, 'wb') as destination:
+                for chunk in audio_file.chunks():
+                    destination.write(chunk)
+
+            # Convert the sample rate of the audio file to 16kHz
+            convert_sample_rate(file_path, RATE)
+            
+            client = speech.SpeechClient()
+            
+            with open(file_path, "rb") as audio_file_2:
+                content = audio_file_2.read()
+
+            audio = speech.RecognitionAudio(content=content)
+            config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=16000,
+                language_code="ko-KR",
+                enable_automatic_punctuation=True,
+            )
+
+            try:
+                response = client.recognize(config=config, audio=audio)
+                transcripts = [result.alternatives[0].transcript for result in response.results]
+                 # STT 작업이 완료된 후에 음성 데이터 파일을 삭제합니다.
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return Response({'status': 'success', 'transcripts': transcripts})
+            except Exception as e:
+                return Response({'status': 'error', 'message': str(e)})
+
+        else:
+            return Response({'status': 'error', 'message': 'No audio file provided'})
 class SpeechToTextView(APIView):
     permission_classes = [AllowAny]
 
@@ -308,7 +311,6 @@ class QueryView(APIView):
             
         else:
             return Response({'error': 'No user input provided'}, status=status.HTTP_400_BAD_REQUEST)
-            #return Response({'error': 'No user input provided'}, status=status.HTTP_400_BAD_REQUEST)
 
     def get_completion(self, request, user_input):
         if 'history' not in request.session:
