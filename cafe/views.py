@@ -73,12 +73,12 @@ def register(request):
             serializer.save()
             # 회원가입 성공 시 사용자가 입력한 내용을 JSON으로 반환
             return JsonResponse({
+                'name': serializer.validated_data.get('owner_name'),
                 'email': serializer.validated_data.get('email'),
                 'owner_phone_number': serializer.validated_data.get('owner_phone_number'),
-                'owner_name': serializer.validated_data.get('owner_name'),
-                'cafe_name': serializer.validated_data.get('cafe_name'),
-                'cafe_address': serializer.validated_data.get('cafe_address'),
-                'cafe_phone_number': serializer.validated_data.get('cafe_phone_number')
+                'cafe_name': serializer.validated_data.get('store_name'),
+                'cafe_address': serializer.validated_data.get('store_address'),
+                'cafe_phone_number': serializer.validated_data.get('store_phone_number')
             })
         # 유효성 검사 실패 시 에러 메시지를 포함한 JSON 반환
         return JsonResponse({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)

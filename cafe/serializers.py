@@ -14,10 +14,10 @@ class CafeOwnerRegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             owner_phone_number=validated_data.get('owner_phone_number'),
-            owner_name=validated_data.get('owner_name'),
-            cafe_name=validated_data.get('cafe_name'),
-            cafe_address=validated_data.get('cafe_address'),
-            cafe_phone_number=validated_data.get('cafe_phone_number')
+            owner_name=validated_data.get('name'),
+            cafe_name=validated_data.get('store_name'),
+            cafe_address=validated_data.get('store_address'),
+            cafe_phone_number=validated_data.get('store_phone_number')
         )
         return user
 class CustomLoginSerializer(serializers.Serializer):
