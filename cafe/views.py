@@ -78,7 +78,7 @@ def register(request):
                 'owner_phone_number': serializer.validated_data.get('owner_phone_number'),
                 'cafe_name': serializer.validated_data.get('store_name'),
                 'cafe_address': serializer.validated_data.get('store_address'),
-                'cafe_phone_number': serializer.validated_data.get('store_phone_number')
+                'cafe_phone_number': serializer.validated_data.get('store_phone')
             })
         # 유효성 검사 실패 시 에러 메시지를 포함한 JSON 반환
         return JsonResponse({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)
