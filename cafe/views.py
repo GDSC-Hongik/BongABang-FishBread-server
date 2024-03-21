@@ -66,12 +66,11 @@ class CustomLoginView(APIView):
                 'refresh_token': str(refresh),
             }, status=status.HTTP_200_OK)
             
-def register(request):
-    if request.method == 'POST':
+class RegisterView(APIView):
+    def post(self, request):
         serializer = CafeOwnerRegisterSerializer(data=request.POST)
         if serializer.is_valid():
             serializer.save()
-            # 회원가입 성공 시 사용자가 입력한 내용을 JSON으로 반환
             return JsonResponse({
                 'name': serializer.validated_data.get('owner_name'),
                 'email': serializer.validated_data.get('email'),
@@ -80,29 +79,23 @@ def register(request):
                 'cafe_address': serializer.validated_data.get('store_address'),
                 'cafe_phone_number': serializer.validated_data.get('store_phone')
             })
-        # 유효성 검사 실패 시 에러 메시지를 포함한 JSON 반환
         return JsonResponse({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)
-    else:
-        return render(request, 'register.html')
     
-def login(request):
-    if request.method == 'POST':
-        serializer = CustomLoginSerializer(data=request.POST)
+class LoginAPIView(APIView):
+    def post(self, request):
+        serializer = CustomLoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data
             django_login(request, user)
-            print("로그인성공")
-            # 로그인에 성공한 경우 유저의 이메일을 JSON으로 반환
-            return JsonResponse({
+            print("로그인 성공")
+            return Response({
                 'email': user.email,
                 'name': user.owner_name
-            })
+            }, status=status.HTTP_200_OK)
         else:
-            print("로그인실패")
+            print("로그인 실패")
             error_message = '유효하지 않은 로그인 정보입니다.'
-            return JsonResponse({'error_message': error_message}, status=400)
-    else:
-        return render(request, 'login.html')
+            return Response({'error_message': error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def home(request):

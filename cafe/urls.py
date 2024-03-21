@@ -1,10 +1,10 @@
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import TranscribeAudioView,SpeechToTextView,MenuListView, QueryView,CafeOwnerRegisterView,CustomLoginView,register,login, transcribe_audio
+from .views import TranscribeAudioView,SpeechToTextView,MenuListView,RegisterView, QueryView,CafeOwnerRegisterView,LoginAPIView,CustomLoginView,transcribe_audio
 urlpatterns = [
-    path('register/', register, name='register'),
-    path('login/', login, name='login'),
+    path('register/', RegisterView.as_view(), name='register'),
+    path('login/', LoginAPIView.as_view(), name='login'),
     path('chatgpt/',QueryView.as_view(), name='query_view'),
     path('stt/',TranscribeAudioView.as_view(),name='stt'),
     path('tts/',SpeechToTextView.as_view(),name='stt'),
