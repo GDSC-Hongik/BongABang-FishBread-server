@@ -164,47 +164,21 @@
       };
       recorder.onstop = async () => {
         try {
-          // 오디오 파일을 FormData에 추가
           const formData = new FormData();
           formData.append('audio', new Blob(chunks, { type: 'audio/wav' }));
-          
-          // AWS S3 업로드를 위한 설정
-          const AWS = require('aws-sdk');
-          AWS.config.update({
-            accessKeyId: os.getenv("AWS_ACCESS_KEY_ID") //'QkZ4PHOMEBFWv8qDyum3QmM4d2yXy1suWPL1kOtJ',
-            secretAccessKey: os.getenv("AWS_SECRET_ACCESS_KEY")//'YOUR_SECRET_ACCESS_KEY',
-            region: os.getenv("AWS_S3_REGION_NAME") //'ap-southeast-2'
+          const response = await fetch('{% url "transcribe_audio" %}', {
+              method: 'POST',
+              body: formData,
           });
-          const s3 = new AWS.S3();
-          const presignedUrlParams = {
-            Bucket: 'bongabangaudio',
-            Key: 'audio.wav', // 저장할 파일 이름
-            ContentType: 'audio/wav'
-          };
-          const presignedUrl = await s3.getSignedUrlPromise('putObject', presignedUrlParams);
-    
-          // 오디오 파일을 S3에 업로드
-          const response = await fetch(presignedUrl, {
-            method: 'PUT',
-            body: formData.get('audio'),
-            headers: {
-              'Content-Type': 'audio/wav'
-            }
-          });
-          if (!response.ok) {
-            throw new Error('업로드 실패');
-          }
-          
-          // S3에 업로드된 파일의 URL을 서버에 전달하고 응답을 받음
-          const data = await response.json();
-          console.log('S3에 업로드된 파일 URL:', data.url);
-    
-          // 이하 코드는 필요에 따라 응답을 처리하거나 다음 동작을 수행하는 부분입니다.
-          // 현재 코드에서는 서버로 전송하는 로직이 있으므로 생략합니다.
-    
+        $('#prompt').val('');
+        const data = await response.json();
+        console.log('Transcripts:', data.transcripts);
+        $('#prompt').val(data.transcripts[0]); 
+        $('form').submit();
           chunks = [];
           recording = false;
-        } catch (error) {
+        }
+        catch (error) {
           console.error('Error in mediaRecorder.onstop:', error);
         }
       };

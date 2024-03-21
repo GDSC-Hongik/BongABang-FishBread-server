@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+from .models import Menu
 
 class CafeOwnerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -42,3 +43,8 @@ class CustomLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("이메일과 비밀번호를 모두 입력해야 합니다.")
 
         return data
+    
+class MenuSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Menu
+        fields = '__all__'
