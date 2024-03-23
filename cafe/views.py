@@ -68,23 +68,23 @@ class CustomLoginView(APIView):
             
 class RegisterView(APIView):
     def post(self, request):
-        serializer = CafeOwnerRegisterSerializer(data=request.POST)
-        if serializer.is_valid():
+        serializer = CafeOwnerRegisterSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return JsonResponse({
-                'name': serializer.validated_data.get('owner_name'),
+            return Response({
+                'owner_name': serializer.validated_data.get('owner_name'),
                 'email': serializer.validated_data.get('email'),
                 'owner_phone_number': serializer.validated_data.get('owner_phone_number'),
-                'cafe_name': serializer.validated_data.get('store_name'),
-                'cafe_address': serializer.validated_data.get('store_address'),
-                'cafe_phone_number': serializer.validated_data.get('store_phone')
-            })
-        return JsonResponse({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)
+                'cafe_name': serializer.validated_data.get('cafe_name'),
+                'cafe_address': serializer.validated_data.get('cafe_address'),
+                'cafe_phone_number': serializer.validated_data.get('cafe_phone_number')
+            },status=status.HTTP_200_OK)
+        return Response({'error_message': '유효하지 않은 회원가입 정보입니다.'}, status=400)
     
 class LoginAPIView(APIView):
     def post(self, request):
         serializer = CustomLoginSerializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             user = serializer.validated_data
             django_login(request, user)
             print("로그인 성공")
